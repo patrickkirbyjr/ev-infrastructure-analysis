@@ -162,9 +162,27 @@ ev_combined
 sort
 
 ```{r}
+ev_combined <- ev_combined |>
+  arrange(ev_combined$state)
 
+ev_combined
 ```
 
+begin simple analysis
+
+```{r}
+ev_combined <- ev_combined |>
+  mutate(evs_per_station = round(registration_count / total_stations, 2)) |>
+  arrange(desc(evs_per_station))
+
+ev_combined
+```
+
+visualize
+
+```{r}
+
+```
 
 
 
