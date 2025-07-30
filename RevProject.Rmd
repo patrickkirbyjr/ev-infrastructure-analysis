@@ -178,13 +178,75 @@ ev_combined <- ev_combined |>
 ev_combined
 ```
 
-visualize
+visualize with heat map
 
 ```{r}
+library(usmap)
+
+plot_usmap(data = ev_combined, values = "evs_per_station", color = "white") + 
+  scale_fill_viridis_c(option = "C") +
+  labs(title = "EVs Per Charging Station in the US",
+       fill = "EVs/Station")
+
+ggsave("evs_per_charging_station_us.png", bg = "grey")
 
 ```
 
+predictive modeling
 
+```{r}
+model_lm = lm(total_stations ~ registration_count, data = ev_combined)
+summary(model_lm)
+```
+
+```{r}
+library(randomForest)
+
+model_rfr = randomForest(total_stations ~ registration_count, data = ev_combined)
+summary(model_rfr)
+```
+
+predict stations based on model
+
+```{r}
+model <- model_lm
+
+ev_combined <- ev_combined |>
+  mutate(expected_stations = round(predict(model), 0),
+         station_gap = expected_stations - total_stations) |>
+  arrange(desc(station_gap))
+
+ev_combined
+```
+
+visualize station gap
+
+```{r}
+plot_usmap(data = ev_combined, values = "station_gap", color = "white") + 
+  scale_fill_gradient2(
+    low = "blue", mid = "white", high = "red",
+    midpoint = 0, name = "Station Gap"
+  ) +
+  labs(
+    title = "EV Charging Station Gaps by State",
+    subtitle = "Red = Underbuilt, Blue = Overbuilt"
+  )
+
+ggsave("ev_charging_station_gaps_by_state.png", bg = "grey")
+```
+```{r}
+ev_combined_10 <- ev_combined |>
+  head(10)
+
+ggplot(ev_combined_10, aes(x = reorder(state, -station_gap), y = station_gap)) + 
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(
+    title = "Top 10 Underbuilt EV States",
+    x = "State",
+    y = "Station Gap"
+  ) + 
+  geom_text(aes(label = station_gap), vjust = -0.2)
+```
 
 
 
