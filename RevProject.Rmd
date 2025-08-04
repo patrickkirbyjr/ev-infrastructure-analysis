@@ -21,7 +21,7 @@ library(janitor)
 library(Hmisc)
 library(ggplot2)
 
-alt_fuel_stations <- read_csv("data/alt_fuel_stations (Jul 7 2025).csv")
+alt_fuel_stations <- read_csv("alt_fuel_stations (Jul 7 2025).csv")
 alt_fuel_stations
 ```
 
@@ -140,7 +140,7 @@ ggplot(ev_stations_us, aes(x = longitude, y = latitude)) +
 import data on number of vehicle registrations by state
 
 ```{r}
-ev_registrations <- read_csv("data/ev_registration_by_state.csv")
+ev_registrations <- read_csv("ev_registration_by_state.csv")
 ev_registrations <- clean_names(ev_registrations)
 ev_registrations
 
@@ -184,7 +184,7 @@ ev_combined
 add in population information
 
 ```{r}
-state_populations <- read_csv("data/state_populations.csv")
+state_populations <- read_csv("state_populations.csv")
 state_populations
 ```
 
@@ -245,7 +245,7 @@ plot_usmap(data = ev_combined_pop, values = "evs_per_station", color = "white") 
   labs(title = "EVs Per Charging Station in the US",
        fill = "EVs/Station")
 
-ggsave("figures/evs_per_charging_station_us.png", bg = "grey")
+ggsave("evs_per_charging_station_us.png", bg = "grey")
 
 ```
 
@@ -255,7 +255,7 @@ plot_usmap(data = ev_combined_pop, values = "people_per_station", color = "white
   labs(title = "People Per Charging Station in the US",
        fill = "People/Station")
 
-ggsave("figures/people_per_charging_station_us.png", bg = "grey")
+ggsave("people_per_charging_station_us.png", bg = "grey")
 
 ```
 
@@ -265,7 +265,7 @@ plot_usmap(data = ev_combined_pop, values = "pop_with_ev", color = "white") +
   labs(title = "EV Saturation by Population",
        fill = "EV Reg / Pop")
 
-ggsave("figures/ev_saturation_by_population.png", bg = "grey")
+ggsave("ev_saturation_by_population.png", bg = "grey")
 
 ```
 
@@ -304,7 +304,7 @@ plot_usmap(data = ev_combined_pop, values = "station_gap", color = "white") +
     subtitle = "Red = Underbuilt, Blue = Overbuilt"
   )
 
-ggsave("figures/ev_charging_station_gaps_by_state.png", bg = "grey")
+ggsave("ev_charging_station_gaps_by_state.png", bg = "grey")
 ```
 
 ```{r}
@@ -320,7 +320,7 @@ ggplot(ev_combined_pop_10, aes(x = reorder(state, -station_gap), y = station_gap
   ) + 
   geom_text(aes(label = station_gap), vjust = -0.2)
 
-ggsave("figures/top_10_underbuilt_states.png")
+ggsave("top_10_underbuilt_states.png")
 ```
  
 ---
