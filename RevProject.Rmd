@@ -3,6 +3,14 @@ title: "EV Project"
 output: html_notebook
 ---
 
+Executive Summary
+
+The goal of this project is to determine the states that are most in need of electric vehicle stations based on a number of factors.
+These factors include the current number of stations, number of electric vehicle registrations, and state population.
+Results from this project should identify the states most in need of adding electric vehicle charging stations.
+
+---
+
 import libraries and dataset
 
 ```{r}
@@ -13,9 +21,16 @@ library(janitor)
 library(Hmisc)
 library(ggplot2)
 
-alt_fuel_stations <- read_csv("alt_fuel_stations (Jul 7 2025).csv")
+alt_fuel_stations <- read_csv("data/alt_fuel_stations (Jul 7 2025).csv")
 alt_fuel_stations
 ```
+
+set random state seed
+
+```{r}
+set.seed(42)
+```
+
 
 clean columns names using janitor
 
@@ -62,12 +77,6 @@ check for missing values
 sum(is.na(ev_stations_selected))
 ```
 
-export cleaned CSV file
-
-```{r}
-write.csv(ev_stations_selected, "ev_stations_selected.csv")
-```
-
 now, just US market 
 
 ```{r}
@@ -92,11 +101,22 @@ ev_stations_by_state <- ev_stations_us |>
 ev_stations_by_state
 ```
 
+for plotting (top 10 only)
+
+```{r}
+ev_stations_by_state_10 <- ev_stations_us |>
+  group_by(state) |>
+  summarise(total_stations = n()) |>
+  arrange(desc(total_stations)) |>
+  head(10)
+```
+
+
 time to plot
 
 ```{r}
 
-ggplot(ev_stations_by_state, aes(x = reorder(state, -total_stations), y = total_stations)) + 
+ggplot(ev_stations_by_state_10, aes(x = reorder(state, -total_stations), y = total_stations)) + 
   geom_bar(stat = "identity", fill = "steelblue") +
   labs(
     title = "Top 10 States by Total EV Stations",
@@ -104,12 +124,6 @@ ggplot(ev_stations_by_state, aes(x = reorder(state, -total_stations), y = total_
     y = "EV Stations"
   ) + 
   geom_text(aes(label = total_stations), vjust = -0.2)
-```
-
-export cleaned CSV file with only US stations
-
-```{r}
-write.csv(ev_stations_us, "ev_stations_us.csv")
 ```
 
 visualize US charging stations
@@ -126,7 +140,7 @@ ggplot(ev_stations_us, aes(x = longitude, y = latitude)) +
 import data on number of vehicle registrations by state
 
 ```{r}
-ev_registrations <- read_csv("ev_registration_by_state.csv")
+ev_registrations <- read_csv("data/ev_registration_by_state.csv")
 ev_registrations <- clean_names(ev_registrations)
 ev_registrations
 
@@ -138,7 +152,6 @@ drop total and DC rows
 ev_registrations_50 <- ev_registrations[!(ev_registrations$state) %in% c("District of Columbia", "Total"),]
 ev_registrations_50
 ```
-
 
 change state names to abbreviations
 
@@ -159,7 +172,7 @@ ev_combined <- ev_combined[!(ev_combined$state) %in% c("PR", "DC"),]
 ev_combined
 ```
 
-sort
+sort by state
 
 ```{r}
 ev_combined <- ev_combined |>
@@ -168,61 +181,120 @@ ev_combined <- ev_combined |>
 ev_combined
 ```
 
-begin simple analysis
+add in population information
 
 ```{r}
-ev_combined <- ev_combined |>
+state_populations <- read_csv("data/state_populations.csv")
+state_populations
+```
+
+change state names to abbreviations, again
+
+```{r}
+state_populations$state <- state.abb[match(state_populations$state, state.name)]
+state_populations
+```
+
+join population data to existing combined dataset
+
+```{r}
+ev_combined_pop <- ev_combined |>
+  left_join(state_populations)
+
+ev_combined_pop 
+```
+
+begin simple analysis
+goal: calculate electric vehicles per station for each state
+
+```{r}
+ev_combined_pop <- ev_combined_pop |>
   mutate(evs_per_station = round(registration_count / total_stations, 2)) |>
   arrange(desc(evs_per_station))
 
-ev_combined
+ev_combined_pop
 ```
 
-visualize with heat map
+goal: calculate number of people per station based on population
+
+```{r}
+ev_combined_pop <- ev_combined_pop |>
+  mutate(people_per_station = round(population / total_stations, 2)) |>
+  arrange(desc(people_per_station))
+
+ev_combined_pop
+```
+
+goal: calculate percentage of population with an EV
+
+```{r}
+ev_combined_pop <- ev_combined_pop |>
+  mutate(pop_with_ev = round(registration_count / population, 4)) |>
+  arrange(desc(pop_with_ev))
+
+ev_combined_pop
+```
+
+visualize with heat maps
 
 ```{r}
 library(usmap)
 
-plot_usmap(data = ev_combined, values = "evs_per_station", color = "white") + 
+plot_usmap(data = ev_combined_pop, values = "evs_per_station", color = "white") + 
   scale_fill_viridis_c(option = "C") +
   labs(title = "EVs Per Charging Station in the US",
        fill = "EVs/Station")
 
-ggsave("evs_per_charging_station_us.png", bg = "grey")
+ggsave("figures/evs_per_charging_station_us.png", bg = "grey")
 
 ```
 
-predictive modeling
+```{r}
+plot_usmap(data = ev_combined_pop, values = "people_per_station", color = "white") + 
+  scale_fill_viridis_c(option = "C") +
+  labs(title = "People Per Charging Station in the US",
+       fill = "People/Station")
+
+ggsave("figures/people_per_charging_station_us.png", bg = "grey")
+
+```
 
 ```{r}
-model_lm = lm(total_stations ~ registration_count, data = ev_combined)
+plot_usmap(data = ev_combined_pop, values = "pop_with_ev", color = "white") + 
+  scale_fill_viridis_c(option = "C") +
+  labs(title = "EV Saturation by Population",
+       fill = "EV Reg / Pop")
+
+ggsave("figures/ev_saturation_by_population.png", bg = "grey")
+
+```
+
+predictive linear modeling based on registrations and population
+
+```{r}
+model_lm = lm(total_stations ~ registration_count + population, data = ev_combined_pop)
 summary(model_lm)
 ```
 
-```{r}
-library(randomForest)
-
-model_rfr = randomForest(total_stations ~ registration_count, data = ev_combined)
-summary(model_rfr)
-```
-
 predict stations based on model
+expected stations = stations the model predicts should exist
+station gap = difference between expected stations and current stations
 
 ```{r}
 model <- model_lm
 
-ev_combined <- ev_combined |>
+ev_combined_pop <- ev_combined_pop |>
   mutate(expected_stations = round(predict(model), 0),
          station_gap = expected_stations - total_stations) |>
   arrange(desc(station_gap))
 
-ev_combined
+ev_combined_pop
 ```
 
 visualize station gap
 
 ```{r}
-plot_usmap(data = ev_combined, values = "station_gap", color = "white") + 
+plot_usmap(data = ev_combined_pop, values = "station_gap", color = "white") + 
   scale_fill_gradient2(
     low = "blue", mid = "white", high = "red",
     midpoint = 0, name = "Station Gap"
@@ -232,13 +304,14 @@ plot_usmap(data = ev_combined, values = "station_gap", color = "white") +
     subtitle = "Red = Underbuilt, Blue = Overbuilt"
   )
 
-ggsave("ev_charging_station_gaps_by_state.png", bg = "grey")
+ggsave("figures/ev_charging_station_gaps_by_state.png", bg = "grey")
 ```
+
 ```{r}
-ev_combined_10 <- ev_combined |>
+ev_combined_pop_10 <- ev_combined_pop |>
   head(10)
 
-ggplot(ev_combined_10, aes(x = reorder(state, -station_gap), y = station_gap)) + 
+ggplot(ev_combined_pop_10, aes(x = reorder(state, -station_gap), y = station_gap)) + 
   geom_bar(stat = "identity", fill = "steelblue") +
   labs(
     title = "Top 10 Underbuilt EV States",
@@ -246,9 +319,15 @@ ggplot(ev_combined_10, aes(x = reorder(state, -station_gap), y = station_gap)) +
     y = "Station Gap"
   ) + 
   geom_text(aes(label = station_gap), vjust = -0.2)
+
+ggsave("figures/top_10_underbuilt_states.png")
 ```
+ 
+---
 
+Conclusion
 
+This project sought to identify the states in most need of electric vehicle infrastructure build out.  
 
 
 
