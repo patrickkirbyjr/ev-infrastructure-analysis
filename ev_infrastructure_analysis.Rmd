@@ -448,8 +448,59 @@ plot_usmap(data = ev_gas_predicted_rfr, values = "station_gap", color = "white")
   )
 ```
 
+let's try gradient boosting before I add any additional features to the analysis
+ 
+```{r}
+library(gbm)
 
+model_gbm_gas = gbm(total_stations ~ registration_count + population + gas_stations, data = ev_gas_stats,
+                    distribution = "gaussian", n.trees = 100)
+summary(model_gbm_gas)
+```
 
+```{r}
+ev_gas_predicted_gbm <- ev_gas_stats |>
+  mutate(expected_stations = round(predict(model_gbm_gas), 0),
+         station_gap = expected_stations - total_stations) |>
+  arrange(desc(station_gap))
+
+ev_gas_predicted_gbm
+```
+
+```{r}
+plot_usmap(data = ev_gas_predicted_gbm, values = "station_gap", color = "white") + 
+  scale_fill_gradient2(
+    low = "blue", mid = "white", high = "red",
+    midpoint = 0, name = "Station Gap"
+  ) +
+  labs(
+    title = "EV Charging Station Gaps by State",
+    subtitle = "Red = Underbuilt, Blue = Overbuilt"
+  )
+```
+
+CA seems to be considered vastly overbuilt every time
+This may be true based on other states, but I would hardly consider any state to be considered overbuilt in the
+current, growing EV market.
+To remedy this issue, I would like to factor in geographic area to the models.
+
+let's clean up some of the column names before this gets even more confusing
+
+```{r}
+ev_gas <- ev_gas_stats |>
+  rename(ev_stations = total_stations,
+         ev_registrations = registration_count)
+
+ev_gas
+``` 
+
+import state geographic data
+source: https://www.census.gov/geographies/reference-files/2010/geo/state-area.html
+
+```{r}
+state_areas <- read.csv("state_areas.csv")
+state_areas
+```
 
 
 ---
