@@ -11,7 +11,6 @@ library(dplyr)
 library(janitor)
 library(Hmisc)
 library(ggplot2)
-library(randomForest)
 ```
 
 import data from preprocessing
@@ -24,67 +23,21 @@ ev_stations_locations <- read_csv("data/ev_station_locations.csv")
 ev_stations_locations
 ```
 
+differentiate column names
+
+```{r}
+ev_data_by_state <- ev_data_by_state |>
+  rename(ev_stations = total_stations,
+         ev_registrations = registration_count)
+ev_data_by_state
+```
+
 set random seed
 
 ```{r}
 set.seed(42)
 ```
 
-
-predictive linear modeling based on registrations and population
-goal: predict the number of stations that each state should have based on registration count and population
-
-```{r}
-model_lm = lm(total_stations ~ registration_count + population, data = ev_data_by_state)
-summary(model_lm)
-```
-
-predict stations based on model
-expected stations = stations the model predicts should exist in each state based solely on registrations and population
-station gap = difference between expected stations and current stations
-
-```{r}
-ev_data_by_state_model <- ev_data_by_state |>
-  rename(ev_stations = total_stations,
-         ev_registrations = registration_count) |>
-  mutate(expected_stations = round(predict(model_lm), 0),
-         station_gap = expected_stations - ev_stations) |>
-  arrange(desc(station_gap))
-ev_data_by_state_model
-```
-
-visualize station gap from linear model
-
-```{r}
-plot_usmap(data = ev_data_by_state_model, values = "station_gap", color = "white") + 
-  scale_fill_gradient2(
-    low = "blue", mid = "white", high = "red",
-    midpoint = 0, name = "Station Gap"
-  ) +
-  labs(
-    title = "EV Charging Station Gaps by State (LM w/ Registration + Population)",
-    subtitle = "Red = Underbuilt, Blue = Overbuilt"
-  )
-
-ggsave("outputs/modeling/ev_charging_station_gaps_by_state_1.png", bg = "skyblue")
-```
-
-```{r}
-ev_data_by_state_model_10 <- ev_data_by_state_model |>
-  head(10)
-
-ggplot(ev_data_by_state_model_10, aes(x = reorder(state, -station_gap), y = station_gap)) + 
-  geom_bar(stat = "identity", fill = "steelblue") +
-  labs(
-    title = "Top 10 Underbuilt EV States (LM w/ Registration + Population)",
-    x = "State",
-    y = "Station Gap"
-  ) + 
-  geom_text(aes(label = station_gap), vjust = -0.2)
-
-ggsave("outputs/modeling/top_10_underbuilt_states_1.png")
-```
- 
 I believe it is a fair assumption to say that the average person does not worry about where to fuel up
 when driving an internal combustion engine (ICE) vehicle. Unless driving in extremely rural areas, gas
 stations are readily available, have enough pumps, and experience minimal downtime. Let's do a better
@@ -110,62 +63,11 @@ gas_stations
 join with state-level data for analysis
 
 ```{r}
-ev_gas_stations <- ev_data_by_state_model |>
+ev_data_by_state <- ev_data_by_state |>
   left_join(gas_stations) |>
-  select(state, ev_stations, gas_stations) |>
-  mutate(difference = gas_stations - ev_stations) |>
-  arrange(desc(difference))
-ev_gas_stations
-```
-
-according to this data, there are only three states with more EV stations than gas stations (CO, MA, CA)
-all other states have more gas stations than EV stations
-
-goal: predict the number of EV stations each state needs but factor in the number of gas stations this time
-
-join the datasets
-
-```{r}
-ev_gas_full <- ev_gas_stations |>
-  left_join(ev_data_by_state_model) |>
-  select(-...1) |>
-  arrange(desc(ev_stations))
-ev_gas_full
-```
-
-implement the model
-
-```{r}
-model_lm_gas = lm(ev_stations ~ ev_registrations + population + gas_stations, data = ev_gas_full)
-summary(model_lm_gas)
-```
-
-number of gas stations is not significant, so it most likely did not alter the model much
-
-let's look at the predictions from this model
-
-```{r}
-ev_gas_predicted <- ev_gas_full |>
-  mutate(expected_stations = round(predict(model_lm_gas), 0),
-         station_gap = expected_stations - ev_stations) |>
-  arrange(desc(station_gap))
-ev_gas_predicted
-```
-
-visualize station gap from the new linear model with gas stations included
-
-```{r}
-plot_usmap(data = ev_gas_predicted, values = "station_gap", color = "white") + 
-  scale_fill_gradient2(
-    low = "blue", mid = "white", high = "red",
-    midpoint = 0, name = "Station Gap"
-  ) +
-  labs(
-    title = "EV Charging Station Gaps by State (LM w/ Registration + Population + Gas Stations)",
-    subtitle = "Red = Underbuilt, Blue = Overbuilt"
-  )
-
-ggsave("outputs/modeling/ev_charging_station_gaps_by_state_2.png", bg = "skyblue")
+  mutate(ev_gas_difference = gas_stations - ev_stations) |>
+  arrange(desc(ev_gas_difference))
+ev_data_by_state
 ```
 
 factor in geographic area to the model
@@ -179,49 +81,75 @@ state_areas$state <- state.abb[match(state_areas$state, state.name)]
 state_areas
 ```
 
-join with dataset
+join the datasets
 
 ```{r}
-ev_gas_area <- ev_gas_full |>
+ev_data_by_state <- ev_data_by_state |>
   left_join(state_areas) |>
   arrange(desc(sq_mi))
-ev_gas_area
+ev_data_by_state
 ```
 
-create new linear model factoring in sq_miles (land area for each state)
-note: re-running other models with same dataset for analysis
+predict the number of stations that each state should have based on various factors
 
 ```{r}
-model_lm_area <- lm(ev_stations ~ ev_registrations + population + sq_mi, data = ev_gas_area)
-summary(model_lm_area)
+model_poisson = glm(ev_stations ~ ev_registrations + population + gas_stations + sq_mi,
+                    data = ev_data_by_state,
+                    family = poisson(link = "log"))
+summary(model_poisson)
 ```
-
-visualize based on combination
-
 ```{r}
-ev_gas_area_predicted_lm<- ev_gas_area |>
-  mutate(expected_stations = round(predict(model_lm_gas_area), 0),
-         station_gap = expected_stations - ev_stations) |>
+ev_data_by_state <- ev_data_by_state |>
+  mutate(
+    expected_stations = round(predict(model_poisson, type = "response"), 0),
+    station_gap = expected_stations - ev_stations) |>
   arrange(desc(station_gap))
-ev_gas_area_predicted_lm
+ev_data_by_state
 ```
 
+visualize station gap from linear model
+
 ```{r}
-plot_usmap(data = ev_gas_area_predicted_lm, values = "station_gap", color = "white") + 
+plot_usmap(data = ev_data_by_state, values = "station_gap", color = "white") + 
   scale_fill_gradient2(
     low = "blue", mid = "white", high = "red",
     midpoint = 0, name = "Station Gap"
   ) +
   labs(
-    title = "EV Charging Station Gaps by State (LM w/ Registration + Population + Gas Stations + Area)",
+    title = "EV Charging Station Gaps by State",
     subtitle = "Red = Underbuilt, Blue = Overbuilt"
   )
 
-ggsave("outputs/modeling/ev_charging_station_gaps_by_state_5.png", bg = "skyblue")
+ggsave("outputs/modeling/underbuilt_states_map.png", bg = "skyblue")
 ```
-
-including area seemed to reduce the extremes (mainly, California)
 
 ```{r}
-anova(model_lm, model_lm_area)
+ev_data_by_state_10 <- ev_data_by_state |>
+  head(10)
+
+ggplot(ev_data_by_state_10, aes(x = reorder(state, -station_gap), y = station_gap)) + 
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(
+    title = "Top 10 Underbuilt EV States",
+    x = "State",
+    y = "Station Gap"
+  ) + 
+  geom_text(aes(label = station_gap), vjust = -0.2)
+
+ggsave("outputs/modeling/top_underbuilt_states.png")
 ```
+
+save top underbuilt states for geospatial analysis
+
+```{r}
+number_of_states <- 5
+
+underbuilt_state_list <- ev_data_by_state |>
+  arrange(desc(station_gap)) |>
+  head(number_of_states) |>
+  pull(state)
+underbuilt_state_list
+
+write_rds(underbuilt_state_list, "data/underbuilt_states.rds")
+```
+

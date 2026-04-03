@@ -1,43 +1,37 @@
-# EV Infrastructure Analysis
+# EV Infrastructure Analysis: Market Saturation & Investment Gaps
 
-## Summary
-This project analyzes the distribution of EV charging stations across the United States to identify where infrastructure is most needed. Data on EV stations, registrations, state populations, gas stations, and geographic area were sourced from the US Department of Energy and US Census Bureau. A linear regression model was used to predict a **station gap** (expected stations minus current stations) for each state, and spatial coverage analysis was applied to the most underbuilt states.
+## Executive Overview
+This project evaluates the distribution of Electric Vehicle (EV) charging stations across the United States to identify critical infrastructure gaps and prioritize future market investments. By analyzing US Department of Energy and Census Bureau data, this analysis models the expected need for EV infrastructure based on current EV registrations, population density, and mature gasoline station footprints. Utilizing a Poisson regression model, the project quantifies the "station gap" for each state and translates these findings into spatial coverage maps to support operational decision-making.
 
-## Project Structure
+## Analytical Workflow
 
-| Notebook | Description |
-|---|---|
-| `ev_analysis_preprocessing.Rmd` | Data ingestion, cleaning, joining, and derived metric calculation |
-| `ev_analysis_eda.Rmd` | Exploratory visualizations including bar charts and choropleth maps |
-| `ev_analysis_modeling.Rmd` | Linear regression modeling and station gap prediction |
-| `ev_analysis_geospatial.Rmd` | Spatial coverage analysis for underbuilt states |
+| Phase | Notebook | Function |
+|---|---|---|
+| Data Integration | `ev_analysis_preprocessing.Rmd` | Merges DoE station locations, Census population demographics, and gasoline infrastructure data to calculate normalized metrics like EV-to-charger ratios. |
+| Market Analytics | `ev_analysis_eda.Rmd` | Evaluates current usage patterns, highlighting states where demand significantly outpaces supply through exploratory visualizations and choropleth mapping. |
+| Predictive Modeling | `ev_analysis_modeling.Rmd` | Deploys a Poisson regression model to quantify the "station gap" by comparing actual EV station counts against expected infrastructure needs. |
+| Geospatial Insights | `ev_analysis_geospatial.Rmd` | Translates the modeling data into actionable coverage maps, applying 1-, 5-, and 10-mile radius buffers to visualize underbuilt areas against population density. |
 
 ## Data Sources
+* **EV Station Data:** US Department of Energy (AFDC)
+* **EV Registration Data:** US Department of Energy
+* **State Population & Area Data:** US Census Bureau
+* **County Population & Geometry:** US Census Bureau ACS via `tidycensus` (2022)
+* **Gasoline Station Data:** US Department of Energy (AFDC)
 
-| Dataset | Source |
-|---|---|
-| EV Station Data | https://afdc.energy.gov/data_download |
-| EV Registration Data | https://afdc.energy.gov/data/10962 |
-| State Population Data | https://www.census.gov/data/tables/time-series/demo/popest/2020s-state-total.html |
-| Gas Station Data | https://afdc.energy.gov/files/u/data/data_source/10333/10333_gasoline_stations_year.xlsx |
-| State Area Data | https://www.census.gov/geographies/reference-files/2010/geo/state-area.html |
-| County Population & Geometry | US Census Bureau ACS via `tidycensus` (2022) |
+## Core Business Insights
+* **High-Priority Investment Markets:** Texas, Florida, New Jersey, and Illinois exhibit the largest deficit in EV stations relative to their expected needs based on registrations and population, making them prime targets for expansion.
+* **Demand Outpacing Supply:** New Jersey and Nevada currently have the highest EV-to-charger ratios in the country, indicating immediate saturation and a pressing need for infrastructure development to support existing drivers. 
+* **Coverage vs. Density (Pennsylvania Focus):** While Pennsylvania shows strong coverage in its eastern and western hubs, 5- and 10-mile spatial buffers reveal meaningful gaps in mid-state regions, highlighting a strategic opportunity to capture inter-city transit routes.
+* **The Gasoline Benchmark:** Only Colorado, Massachusetts, and California have more EV stations than gas stations. The remainder of the US market still has a substantial gap to close relative to mature gasoline infrastructure.
 
-## Key Findings
-1. California dominates EV infrastructure with 17,797 stations, but coverage is heavily coastal — the Midwest is largely underserved.
-2. New Jersey and Nevada have the highest EV-to-charger ratios, indicating demand significantly outpacing supply.
-3. Only Colorado, Massachusetts, and California have more EV stations than gas stations; every other state still has a substantial gap relative to mature gasoline infrastructure.
-4. **Texas, Florida, New Jersey, and Illinois** are the most underbuilt states relative to their expected needs based on registrations and population.
-5. Pennsylvania shows strong coverage in the east and west but meaningful rural gaps in mid-state regions at 5- and 10-mile buffer distances.
+## Technical Stack
+* **Languages & Environments:** R, RStudio, RMarkdown
+* **Data Engineering & Analysis:** `tidyverse`, `dplyr`, `janitor`
+* **Geospatial & Visualization:** `ggplot2`, `sf`, `tidycensus`
+* **Modeling:** Base R (`glm` with Poisson family/log link)
 
-## Modeling Approach
-EV registrations and population were selected as the primary predictors of charging infrastructure need. The station gap — expected minus actual station count — serves as the primary measure of infrastructure need.
-
-## Coverage Analysis
-Coverage maps were generated for the most underbuilt states and Pennsylvania using a custom R function (`analyze_ev_coverage`). EV stations were spatially buffered at 1, 5, and 10 miles and overlaid on county-level population density to distinguish rural coverage gaps from true infrastructure deficits.
-
-## Next Steps
-- Add highways and urban centers as context layers in coverage maps
-- Incorporate geospatial features into modeling (highway proximity, urban density)
-- Apply cross-validation to strengthen predictions given the small state-level sample size
-- Benchmark US state metrics against Norway as a global EV leader
+## Strategic Next Steps
+* Automate data ingestion of the DoE's Alternative Fueling Station Locator API to track infrastructure performance variance and market shifts on a quarterly basis.
+* Incorporate geospatial highway proximity and urban density metrics into the modeling phase to refine site-selection prioritization.
+* Apply cross-validation techniques to strengthen predictive modeling accuracy across state-level data.
