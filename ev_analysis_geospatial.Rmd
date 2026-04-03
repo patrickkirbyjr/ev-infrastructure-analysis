@@ -1,0 +1,106 @@
+---
+title: "EV Infrastructure Analysis - Geospatial Analysis"
+output: html_notebook
+---
+
+import libraries
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(Hmisc)
+library(ggplot2)
+library(sf)
+library(tidycensus)
+library(osmdata)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(scales)
+```
+
+import data from preprocessing
+
+```{r}
+ev_data_by_state <- read_csv("data/ev_data_by_state.csv")
+ev_data_by_state
+
+ev_stations_locations <- read_csv("data/ev_station_locations.csv")
+ev_stations_locations
+```
+
+create coverage map function
+
+```{r}
+analyze_ev_coverage <- function(state_abbr, buffer) {
+  
+  # filter EV locations to selected state
+  ev_locations_state <- ev_stations_locations |> filter(state == state_abbr)
+  coords <- ev_locations_state |> select(longitude, latitude) |> as.data.frame()
+  stations_sf <- st_as_sf(coords, 
+                          coords = c("longitude", "latitude"), 
+                          crs = 4326
+                          ) |> st_make_valid()
+  
+  # get population data for counties in selected state
+  population <- get_acs(geography = "county",
+                      variables = "B01003_001",
+                      year = 2022,
+                      geometry = TRUE,
+                      state = state_abbr)
+  population <- st_transform(population, st_crs(stations_sf)) |> st_make_valid()
+  
+  population <- population |>
+  mutate(area_mi2 = as.numeric(st_area(geometry)) / 2.59e6,
+         pop_density = estimate / area_mi2)
+  
+  #create bbox
+  bbox <- st_bbox(population)
+  
+  # create buffers (enter in miles and it will convert to meters)
+  buffers <- st_buffer(stations_sf, dist = buffer * 1609)
+  coverage_area <-st_make_valid(st_union(buffers))
+  
+  # determine uncovered areas
+  uncovered <- st_make_valid(st_difference(st_union(st_geometry(population)), coverage_area))
+  
+  # plot coverage map
+  ggplot() +
+    geom_sf(data = population, aes(fill = pop_density), color = "white", size = 0.2) +
+    scale_fill_viridis_c(option = "viridis", 
+                         trans = "log",
+                         limits = c(10, 10000),
+                         breaks = c(10, 100, 1000, 10000),
+                         labels = label_comma(accuracy = 1),
+                         name = bquote("Population Density (people/mi"^2*")")) +
+    geom_sf(data = uncovered, fill = "magenta", color = NA, alpha = 0.7) +
+    coord_sf(xlim = c(bbox["xmin"], bbox["xmax"]), ylim = c(bbox["ymin"], bbox["ymax"]), expand = FALSE) +
+    ggtitle(paste0(state_abbr, " EV Station Coverage (", buffer, "-Mile Radius)")) +
+    labs(subtitle = paste("Shaded areas fall outside EV station coverage"))
+  
+  # save to file
+  ggsave(paste0("outputs/coverage_maps/coverage_map_", state_abbr, "_", buffer, "mi.png"))
+}
+```
+
+test by analyzing PA with 10 mile buffer
+
+```{r}
+analyze_ev_coverage("PA", 10)
+```
+
+analyze multiple states and buffers
+
+```{r}
+
+state_list <- c("PA", "NJ")
+
+buffer_list <- c(5, 10, 15, 20)
+
+for (state in state_list) {
+  for (buffer in buffer_list) {
+    cat("Creating coverage map for", state, "with buffer", buffer, "miles...\n")
+    plot_obj <- analyze_ev_coverage(state, buffer)
+  }
+}
+```

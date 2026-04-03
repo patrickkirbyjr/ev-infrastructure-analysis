@@ -1,0 +1,187 @@
+---
+title: "EV Infrastructure Analysis - Preprocessing"
+output: html_notebook
+---
+
+Executive Summary
+
+The goal of this project is to determine the states that are most in need of electric vehicle stations based on a number of factors.
+These factors include the current number of stations, number of electric vehicle registrations, and state population.
+Results from this project should identify the states most in need of adding electric vehicle charging stations.
+
+---
+
+import libraries
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(Hmisc)
+library(ggplot2)
+```
+
+import US DoE data
+EV Station Data: https://afdc.energy.gov/data_download
+
+```{r}
+alt_fuel_stations <- read_csv("data/alt_fuel_stations (Jul 7 2025).csv")
+alt_fuel_stations
+```
+
+clean columns names using janitor
+
+```{r}
+alt_fuel_stations_clean <- clean_names(alt_fuel_stations)
+alt_fuel_stations_clean
+```
+
+filter to only EV stations ("ELEC")
+
+```{r}
+ev_stations <- filter(alt_fuel_stations_clean, fuel_type_code == "ELEC")
+ev_stations
+```
+
+view full list of column names
+
+```{r}
+colnames(ev_stations)
+```
+
+select columns for study
+
+```{r}
+ev_stations_selected <- ev_stations |>
+  select(station_name, city, state, zip, country, latitude, longitude, ev_network)
+ev_stations_selected
+```
+
+check for missing values
+
+```{r}
+sum(is.na(ev_stations_selected))
+```
+
+filter to only US market
+
+```{r}
+ev_stations_us <- filter(ev_stations_selected, country == "US")
+ev_stations_us
+```
+
+view unique list of charging netwokrs within dataset
+
+```{r}
+ev_networks <- ev_stations_us[ ,"ev_network"]
+table(ev_networks)
+```
+
+filter to only continental US for geospatial analysis
+export station location dataset for geospatial modeling
+
+```{r}
+ev_stations_geo <- ev_stations_us |>
+  filter(!state %in% c("AK", "PR", "HI"))
+
+write.csv(ev_stations_geo, "data/ev_station_locations.csv")
+```
+
+
+group by state to determine total number of stations per state
+
+```{r}
+ev_stations_by_state <- ev_stations_us |>
+  group_by(state) |>
+  summarise(total_stations = n()) |>
+  arrange(desc(total_stations))
+
+ev_stations_by_state
+```
+
+import data on number of electric vehicle registrations by state
+EV Registration Data: https://afdc.energy.gov/data/10962
+
+```{r}
+ev_registrations <- read_csv("data/ev_registration_by_state.csv")
+ev_registrations <- clean_names(ev_registrations)
+ev_registrations
+```
+
+drop total and DC rows and transform state names to abbreviations
+
+```{r}
+ev_registrations_50 <- ev_registrations[!(ev_registrations$state) %in% c("District of Columbia", "Total"),]
+ev_registrations_50$state <- state.abb[match(ev_registrations_50$state, state.name)]
+ev_registrations_50
+```
+
+compare total number of ev stations to number of registrations by joining on state
+drop PR and DC
+
+```{r}
+ev_combined <- ev_stations_by_state |>
+  left_join(ev_registrations_50)
+
+ev_combined <- ev_combined[!(ev_combined$state) %in% c("PR", "DC"),]
+ev_combined
+```
+
+sort by registrations, descending
+
+```{r}
+ev_combined <- ev_combined |>
+  arrange(desc(ev_combined$registration_count))
+ev_combined
+```
+
+import population information and transform state names to abbreviations
+State Population Data: https://www.census.gov/data/tables/time-series/demo/popest/2020s-state-total.html
+
+```{r}
+state_populations <- read_csv("data/state_populations.csv")
+state_populations$state <- state.abb[match(state_populations$state, state.name)]
+state_populations
+```
+
+join population data to existing combined dataset
+
+```{r}
+ev_combined_pop <- ev_combined |>
+  left_join(state_populations)
+
+ev_combined_pop 
+```
+
+calculate electric vehicles per station for each state
+
+```{r}
+ev_combined_pop <- ev_combined_pop |>
+  mutate(evs_per_station = round(registration_count / total_stations, 2)) |>
+  arrange(desc(evs_per_station))
+ev_combined_pop
+```
+
+calculate number of people per station based on population
+
+```{r}
+ev_combined_pop <- ev_combined_pop |>
+  mutate(people_per_station = round(population / total_stations, 2)) |>
+  arrange(desc(people_per_station))
+ev_combined_pop
+```
+
+calculate percentage of population with an EV 
+note: rough estimate as population includes all ages and some owners may have more than one EV
+
+```{r}
+ev_combined_pop <- ev_combined_pop |>
+  mutate(pop_with_ev = round(registration_count / population, 4)) |>
+  arrange(desc(pop_with_ev))
+ev_combined_pop
+```
+
+export finalized data frame for further analysis
+```{r}
+write.csv(ev_combined_pop, "data/ev_data_by_state.csv")
+```
