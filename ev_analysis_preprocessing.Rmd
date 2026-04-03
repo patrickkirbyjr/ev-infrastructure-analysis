@@ -3,14 +3,6 @@ title: "EV Infrastructure Analysis - Preprocessing"
 output: html_notebook
 ---
 
-Executive Summary
-
-The goal of this project is to determine the states that are most in need of electric vehicle stations based on a number of factors.
-These factors include the current number of stations, number of electric vehicle registrations, and state population.
-Results from this project should identify the states most in need of adding electric vehicle charging stations.
-
----
-
 import libraries
 
 ```{r}

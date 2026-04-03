@@ -86,7 +86,9 @@ analyze_ev_coverage <- function(state_abbr, buffer) {
     labs(subtitle = paste("Shaded areas fall outside EV station coverage"))
   
   # save to file
-  ggsave(paste0("outputs/coverage_maps/coverage_map_", state_abbr, "_", buffer, "mi.png"))
+  state_folder <- paste0("outputs/coverage_maps/", state_abbr, "/")
+  dir.create(state_folder, recursive = TRUE, showWarnings = FALSE)
+  ggsave(paste0(state_folder, "coverage_map_", state_abbr, "_", buffer, "mi.png"))
 }
 ```
 
@@ -100,7 +102,7 @@ analyze multiple states and buffers
 
 ```{r}
 
-state_list <- c("PA", "NJ")
+state_list <- c("TX", "FL", "NJ", "IL", "PA")
 
 buffer_list <- c(1, 5, 10)
 
