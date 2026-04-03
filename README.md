@@ -1,23 +1,27 @@
 # EV Infrastructure Analysis: Market Saturation & Investment Gaps
 
 ## Executive Overview
-This project evaluates the distribution of Electric Vehicle (EV) charging stations across the United States to identify critical infrastructure gaps and prioritize future market investments. By analyzing US Department of Energy and Census Bureau data, this analysis models the expected need for EV infrastructure based on current EV registrations, population density, and mature gasoline station footprints. Utilizing a Poisson regression model, the project quantifies the "station gap" for each state and translates these findings into spatial coverage maps to support operational decision-making.
+This project evaluates the distribution of Electric Vehicle (EV) charging stations across the United States to identify critical infrastructure gaps and prioritize future market investments. By analyzing US Department of Energy and Census Bureau data, this analysis models the expected need for EV infrastructure based on current EV registrations, population density, and mature gasoline station footprints. Utilizing a Poisson regression model, the project quantifies the **"station gap"** for each state and translates these findings into spatial coverage maps to support operational decision-making.
 
 ## Analytical Workflow
 
 | Phase | Notebook | Function |
 |---|---|---|
-| Data Integration | `ev_analysis_preprocessing.Rmd` | Merges DoE station locations, Census population demographics, and gasoline infrastructure data to calculate normalized metrics like EV-to-charger ratios. |
-| Market Analytics | `ev_analysis_eda.Rmd` | Evaluates current usage patterns, highlighting states where demand significantly outpaces supply through exploratory visualizations and choropleth mapping. |
-| Predictive Modeling | `ev_analysis_modeling.Rmd` | Deploys a Poisson regression model to quantify the "station gap" by comparing actual EV station counts against expected infrastructure needs. |
-| Geospatial Insights | `ev_analysis_geospatial.Rmd` | Translates the modeling data into actionable coverage maps, applying 1-, 5-, and 10-mile radius buffers to visualize underbuilt areas against population density. |
+| Data Integration | `ev_analysis_preprocessing.Rmd` | Data ingestion, cleaning, joining, and derived metric calculation |
+| Market Analytics | `ev_analysis_eda.Rmd` | Exploratory visualizations including bar charts and choropleth maps |
+| Predictive Modeling | `ev_analysis_modeling.Rmd` | Regression modeling and station gap prediction |
+| Geospatial Insights | `ev_analysis_geospatial.Rmd` | Spatial coverage analysis for underbuilt states |
 
 ## Data Sources
-* **EV Station Data:** US Department of Energy (AFDC)
-* **EV Registration Data:** US Department of Energy
-* **State Population & Area Data:** US Census Bureau
-* **County Population & Geometry:** US Census Bureau ACS via `tidycensus` (2022)
-* **Gasoline Station Data:** US Department of Energy (AFDC)
+
+| Dataset | Source |
+|---|---|
+| EV Station Data | https://afdc.energy.gov/data_download |
+| EV Registration Data | https://afdc.energy.gov/data/10962 |
+| State Population Data | https://www.census.gov/data/tables/time-series/demo/popest/2020s-state-total.html |
+| Gas Station Data | https://afdc.energy.gov/files/u/data/data_source/10333/10333_gasoline_stations_year.xlsx |
+| State Area Data | https://www.census.gov/geographies/reference-files/2010/geo/state-area.html |
+| County Population & Geometry | US Census Bureau ACS via `tidycensus` (2022) |
 
 ## Core Business Insights
 * **High-Priority Investment Markets:** Texas, Florida, New Jersey, and Illinois exhibit the largest deficit in EV stations relative to their expected needs based on registrations and population, making them prime targets for expansion.
@@ -35,3 +39,4 @@ This project evaluates the distribution of Electric Vehicle (EV) charging statio
 * Automate data ingestion of the DoE's Alternative Fueling Station Locator API to track infrastructure performance variance and market shifts on a quarterly basis.
 * Incorporate geospatial highway proximity and urban density metrics into the modeling phase to refine site-selection prioritization.
 * Apply cross-validation techniques to strengthen predictive modeling accuracy across state-level data.
+* Benchmark US state metrics against Norway as a global EV leader.
