@@ -34,31 +34,38 @@ create coverage map function
 ```{r}
 analyze_ev_coverage <- function(state_abbr, buffer) {
   
+  # Conus Albers Equal Area
+  projected_crs <- 5070
+  
   # filter EV locations to selected state
   ev_locations_state <- ev_stations_locations |> filter(state == state_abbr)
   coords <- ev_locations_state |> select(longitude, latitude) |> as.data.frame()
+  
   stations_sf <- st_as_sf(coords, 
                           coords = c("longitude", "latitude"), 
                           crs = 4326
-                          ) |> st_make_valid()
-  
+                          ) |>
+    st_make_valid() |>
+    st_transform(projected_crs)
+
   # get population data for counties in selected state
   population <- get_acs(geography = "county",
                       variables = "B01003_001",
                       year = 2022,
                       geometry = TRUE,
-                      state = state_abbr)
-  population <- st_transform(population, st_crs(stations_sf)) |> st_make_valid()
+                      state = state_abbr) |>
+    st_transform(projected_crs) |>
+    st_make_valid()
   
   population <- population |>
-  mutate(area_mi2 = as.numeric(st_area(geometry)) / 2.59e6,
+    mutate(area_mi2 = as.numeric(st_area(geometry)) / 2.59e6,
          pop_density = estimate / area_mi2)
   
   #create bbox
   bbox <- st_bbox(population)
   
   # create buffers (enter in miles and it will convert to meters)
-  buffers <- st_buffer(stations_sf, dist = buffer * 1609)
+  buffers <- st_buffer(stations_sf, dist = buffer * 1609.34)
   coverage_area <-st_make_valid(st_union(buffers))
   
   # determine uncovered areas
@@ -86,7 +93,7 @@ analyze_ev_coverage <- function(state_abbr, buffer) {
 test by analyzing PA with 10 mile buffer
 
 ```{r}
-analyze_ev_coverage("PA", 10)
+analyze_ev_coverage("PA", 5)
 ```
 
 analyze multiple states and buffers
@@ -95,7 +102,7 @@ analyze multiple states and buffers
 
 state_list <- c("PA", "NJ")
 
-buffer_list <- c(5, 10, 15, 20)
+buffer_list <- c(1, 5, 10)
 
 for (state in state_list) {
   for (buffer in buffer_list) {

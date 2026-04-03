@@ -59,7 +59,7 @@ The station gap — the difference between a model's expected station count and 
 Model comparisons used ANOVA for nested linear models and permutation-based feature importance (`rfPermute`) for ensemble models. The linear model using registrations, population, and state area produced the most interpretable and stable results.
 
 ## Coverage Maps
-Coverage maps were generated for states identified as the most underbuilt, as well as Pennsylvania. Using a custom R function (`analyze_ev_coverage`), EV stations were spatially buffered at 5, 10, 15, and 20 miles to represent coverage zones ranging from highly convenient to slightly inconvenient. Maps are overlaid on county-level population density to distinguish rural coverage gaps from true infrastructure deficits.
+Coverage maps were generated for states identified as the most underbuilt, as well as Pennsylvania. Using a custom R function (`analyze_ev_coverage`), EV stations were spatially buffered at 1, 5, and 10 miles to represent coverage zones ranging from highly convenient to slightly inconvenient. Maps are overlaid on county-level population density to distinguish rural coverage gaps from true infrastructure deficits.
 
 ## Next Steps
 - Include major highways and cities as context layers in coverage maps
