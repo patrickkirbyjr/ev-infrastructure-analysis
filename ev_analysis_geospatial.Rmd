@@ -89,7 +89,7 @@ analyze_ev_coverage <- function(state_abbr, buffer) {
 }
 ```
 
-analyze underbuilt states and buffers (+PA)
+analyze underbuilt states and buffers from modeling (+PA)
 
 ```{r}
 

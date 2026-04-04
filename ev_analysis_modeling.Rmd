@@ -44,7 +44,6 @@ stations are readily available, have enough pumps, and experience minimal downti
 job predicting how many EVs each state will need based on the current gasoline infrastructure.
 
 Gas Station Data: https://afdc.energy.gov/files/u/data/data_source/10333/10333_gasoline_stations_year.xlsx
-
 Caveat: data only through 2012 (historical trends show a decline in number of gas stations since 1996)
 
 import and clean up data
@@ -91,6 +90,7 @@ ev_data_by_state
 ```
 
 predict the number of stations that each state should have based on various factors
+model: generalized linear model (necessary based on counts)
 
 ```{r}
 model_poisson = glm(ev_stations ~ ev_registrations + population + gas_stations + sq_mi,
@@ -98,6 +98,9 @@ model_poisson = glm(ev_stations ~ ev_registrations + population + gas_stations +
                     family = poisson(link = "log"))
 summary(model_poisson)
 ```
+
+add model findings to dataset
+new features: expected stations (predicted from model) and station gap (expected - existing)
 ```{r}
 ev_data_by_state <- ev_data_by_state |>
   mutate(
@@ -107,7 +110,7 @@ ev_data_by_state <- ev_data_by_state |>
 ev_data_by_state
 ```
 
-visualize station gap from linear model
+visualize station gap from model
 
 ```{r}
 plot_usmap(data = ev_data_by_state, values = "station_gap", color = "white") + 
@@ -122,6 +125,8 @@ plot_usmap(data = ev_data_by_state, values = "station_gap", color = "white") +
 
 ggsave("outputs/modeling/underbuilt_states_map.png", bg = "skyblue")
 ```
+
+visualize top 10 underbuilt states as predicted by model
 
 ```{r}
 ev_data_by_state_10 <- ev_data_by_state |>
@@ -152,4 +157,3 @@ underbuilt_state_list
 
 write_rds(underbuilt_state_list, "data/underbuilt_states.rds")
 ```
-

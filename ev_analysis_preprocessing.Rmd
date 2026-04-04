@@ -13,7 +13,7 @@ library(Hmisc)
 library(ggplot2)
 ```
 
-import US DoE data
+import US DoE data on alternative fueling stations
 EV Station Data: https://afdc.energy.gov/data_download
 
 ```{r}
@@ -21,7 +21,7 @@ alt_fuel_stations <- read_csv("data/alt_fuel_stations (Jul 7 2025).csv")
 alt_fuel_stations
 ```
 
-clean columns names using janitor
+clean column names using janitor
 
 ```{r}
 alt_fuel_stations_clean <- clean_names(alt_fuel_stations)
@@ -87,7 +87,6 @@ ev_stations_by_state <- ev_stations_us |>
   group_by(state) |>
   summarise(total_stations = n()) |>
   arrange(desc(total_stations))
-
 ev_stations_by_state
 ```
 
@@ -109,7 +108,7 @@ ev_registrations_50
 ```
 
 compare total number of ev stations to number of registrations by joining on state
-drop PR and DC
+drop PR and DC (focusing on states only)
 
 ```{r}
 ev_combined <- ev_stations_by_state |>
@@ -145,7 +144,7 @@ ev_combined_pop <- ev_combined |>
 ev_combined_pop 
 ```
 
-calculate electric vehicles per station for each state
+calculate electric vehicles per charging station for each state
 
 ```{r}
 ev_combined_pop <- ev_combined_pop |>
@@ -154,7 +153,7 @@ ev_combined_pop <- ev_combined_pop |>
 ev_combined_pop
 ```
 
-calculate number of people per station based on population
+calculate number of people per charging station based on population
 
 ```{r}
 ev_combined_pop <- ev_combined_pop |>
@@ -174,6 +173,7 @@ ev_combined_pop
 ```
 
 export finalized data frame for further analysis
+
 ```{r}
 write.csv(ev_combined_pop, "data/ev_data_by_state.csv")
 ```

@@ -32,7 +32,7 @@ ev_stations_us_10 <- ev_data_by_state |>
 ev_stations_us_10
 ```
 
-visualize top 10 states
+visualize top 10 states with the most EV stations
 
 ```{r}
 
@@ -47,7 +47,7 @@ ggplot(ev_stations_us_10, aes(x = reorder(state, -total_stations), y = total_sta
 ggsave("outputs/charts/top_10_states_total_ev_stations.png")
 ```
 
-visualize US charging station locations
+visualize all US charging station locations (continental US only)
 
 ```{r}
 library(maps)
